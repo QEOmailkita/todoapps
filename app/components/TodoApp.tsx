@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, type Todo } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import AuthForm from "./AuthForm";
@@ -11,7 +11,7 @@ export default function TodoApp() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [isComposing, setIsComposing] = useState(false);
+  const isComposingRef = useRef(false);
 
   // 認証状態の監視
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function TodoApp() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !isComposing) addTodo();
+    if (e.key === "Enter" && !isComposingRef.current) addTodo();
   };
 
   if (loading) {
@@ -136,8 +136,8 @@ export default function TodoApp() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onCompositionStart={() => setIsComposing(true)}
-            onCompositionEnd={() => setIsComposing(false)}
+            onCompositionStart={() => { isComposingRef.current = true; }}
+            onCompositionEnd={() => { setTimeout(() => { isComposingRef.current = false; }, 0); }}
             onKeyDown={handleKeyDown}
             placeholder="新しいタスクを入力..."
             className="flex-1 px-4 py-3 rounded-xl border border-[#e8e8e0] bg-white text-[#1a1a2e] placeholder-[#c0c0b8] text-sm focus:outline-none focus:ring-2 focus:ring-[#1a1a2e]/20 focus:border-[#1a1a2e] transition-all"
