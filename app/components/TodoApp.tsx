@@ -87,7 +87,7 @@ export default function TodoApp() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") addTodo();
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) addTodo();
   };
 
   if (loading) {
