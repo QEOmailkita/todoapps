@@ -10,6 +10,7 @@ export default function TodoApp() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // 認証状態の監視
   useEffect(() => {
@@ -99,7 +100,9 @@ export default function TodoApp() {
 
   if (!user) return <AuthForm />;
 
-  const remaining = todos.filter((t) => !t.completed).length;
+  const activeTodos = todos.filter((t) => !t.completed);
+  const completedTodos = todos.filter((t) => t.completed);
+  const remaining = activeTodos.length;
   const total = todos.length;
 
   return (
@@ -145,48 +148,31 @@ export default function TodoApp() {
           </button>
         </div>
 
-        {/* タスクリスト */}
-        {todos.length === 0 ? (
+        {/* 未完了タスク */}
+        {activeTodos.length === 0 && completedTodos.length === 0 ? (
           <div className="text-center py-16 text-[#c0c0b8]">
             <div className="text-5xl mb-4">✓</div>
             <p className="text-sm">タスクはありません</p>
           </div>
+        ) : activeTodos.length === 0 ? (
+          <div className="text-center py-10 text-[#c0c0b8]">
+            <p className="text-sm">すべて完了しました</p>
+          </div>
         ) : (
           <ul className="space-y-2">
-            {todos.map((todo) => (
+            {activeTodos.map((todo) => (
               <li
                 key={todo.id}
-                className={`group flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all ${
-                  todo.completed
-                    ? "bg-[#f0efec] border-transparent"
-                    : "bg-white border-[#e8e8e0] hover:border-[#d0d0c8] hover:shadow-sm"
-                }`}
+                className="group flex items-center gap-3 px-4 py-3.5 rounded-xl border bg-white border-[#e8e8e0] hover:border-[#d0d0c8] hover:shadow-sm transition-all"
               >
-                {/* チェックボタン */}
                 <button
                   onClick={() => toggleTodo(todo)}
-                  aria-label={todo.completed ? "未完了に戻す" : "完了にする"}
-                  className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                    todo.completed
-                      ? "bg-[#1a1a2e] border-[#1a1a2e]"
-                      : "border-[#d0d0c8] hover:border-[#1a1a2e]"
-                  }`}
-                >
-                  {todo.completed && (
-                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
-                    </svg>
-                  )}
-                </button>
-
-                {/* テキスト */}
-                <span className={`flex-1 text-sm leading-relaxed transition-all ${
-                  todo.completed ? "line-through text-[#b0b0a8]" : "text-[#1a1a2e]"
-                }`}>
+                  aria-label="完了にする"
+                  className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-[#d0d0c8] hover:border-[#1a1a2e] flex items-center justify-center transition-all"
+                />
+                <span className="flex-1 text-sm leading-relaxed text-[#1a1a2e]">
                   {todo.text}
                 </span>
-
-                {/* 削除ボタン */}
                 <button
                   onClick={() => deleteTodo(todo.id)}
                   aria-label="削除"
@@ -201,15 +187,64 @@ export default function TodoApp() {
           </ul>
         )}
 
-        {/* 完了済みまとめて削除 */}
-        {todos.some((t) => t.completed) && (
-          <div className="mt-6 text-center">
+        {/* 完了済みセクション */}
+        {completedTodos.length > 0 && (
+          <div className="mt-8">
             <button
-              onClick={deleteCompleted}
-              className="text-xs text-[#b0b0a8] hover:text-[#e05555] transition-colors"
+              onClick={() => setShowCompleted(!showCompleted)}
+              className="flex items-center gap-2 text-sm text-[#9a9a9a] hover:text-[#1a1a2e] transition-colors mb-3"
             >
-              完了済みを削除
+              <svg
+                className={`w-3.5 h-3.5 transition-transform ${showCompleted ? "rotate-90" : ""}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              完了済み {completedTodos.length}件
             </button>
+
+            {showCompleted && (
+              <>
+                <ul className="space-y-2">
+                  {completedTodos.map((todo) => (
+                    <li
+                      key={todo.id}
+                      className="group flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#f0efec] border border-transparent transition-all"
+                    >
+                      <button
+                        onClick={() => toggleTodo(todo)}
+                        aria-label="未完了に戻す"
+                        className="flex-shrink-0 w-5 h-5 rounded-full bg-[#1a1a2e] border-2 border-[#1a1a2e] flex items-center justify-center transition-all"
+                      >
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                        </svg>
+                      </button>
+                      <span className="flex-1 text-sm leading-relaxed line-through text-[#b0b0a8]">
+                        {todo.text}
+                      </span>
+                      <button
+                        onClick={() => deleteTodo(todo.id)}
+                        aria-label="削除"
+                        className="flex-shrink-0 opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-[#c0c0b8] hover:text-[#e05555] hover:bg-[#ffe8e8] transition-all"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={deleteCompleted}
+                    className="text-xs text-[#b0b0a8] hover:text-[#e05555] transition-colors"
+                  >
+                    完了済みをすべて削除
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
