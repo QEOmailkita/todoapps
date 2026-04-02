@@ -13,6 +13,7 @@ export default function TodoApp() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [swipingId, setSwipingId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
   const isComposingRef = useRef(false);
   const lastCompositionEnd = useRef(0);
   const touchStartX = useRef(0);
@@ -41,12 +42,20 @@ export default function TodoApp() {
 
   const handleTouchEnd = (todo: Todo) => {
     if (swipeOffset < -SWIPE_THRESHOLD) {
-      if (!todo.completed) toggleTodo(todo);
-      else deleteTodo(todo.id);
+      setDismissingId(todo.id);
+      setSwipeOffset(0);
+      setSwipingId(null);
+      swipeDirectionLocked.current = null;
+      setTimeout(() => {
+        if (!todo.completed) toggleTodo(todo);
+        else deleteTodo(todo.id);
+        setDismissingId(null);
+      }, 350);
+    } else {
+      setSwipeOffset(0);
+      setSwipingId(null);
+      swipeDirectionLocked.current = null;
     }
-    setSwipeOffset(0);
-    setSwipingId(null);
-    swipeDirectionLocked.current = null;
   };
 
   // 認証状態の監視
@@ -200,7 +209,17 @@ export default function TodoApp() {
         ) : (
           <ul className="space-y-2">
             {activeTodos.map((todo) => (
-              <li key={todo.id} className="relative overflow-hidden rounded-xl">
+              <li
+                key={todo.id}
+                className="relative overflow-hidden rounded-xl"
+                style={{
+                  maxHeight: dismissingId === todo.id ? 0 : 56,
+                  opacity: dismissingId === todo.id ? 0 : 1,
+                  marginBottom: dismissingId === todo.id ? 0 : undefined,
+                  transition: dismissingId === todo.id ? "max-height 0.3s ease 0.2s, opacity 0.2s ease, margin-bottom 0.3s ease 0.2s" : undefined,
+                  overflow: "hidden",
+                }}
+              >
                 {/* スワイプ時の背景（完了） */}
                 <div className="absolute inset-0 bg-[#4caf7d] flex items-center justify-end pr-5 rounded-xl">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
@@ -210,8 +229,16 @@ export default function TodoApp() {
                 <div
                   className="group flex items-center gap-3 px-4 py-3.5 rounded-xl border bg-white border-[#e8e8e0]"
                   style={{
-                    transform: swipingId === todo.id ? `translateX(${swipeOffset}px)` : "translateX(0)",
-                    transition: swipingId === todo.id ? "none" : "transform 0.3s ease",
+                    transform: dismissingId === todo.id
+                      ? "translateX(-110%)"
+                      : swipingId === todo.id
+                      ? `translateX(${swipeOffset}px)`
+                      : "translateX(0)",
+                    transition: dismissingId === todo.id
+                      ? "transform 0.3s cubic-bezier(0.4, 0, 0.6, 1)"
+                      : swipingId === todo.id
+                      ? "none"
+                      : "transform 0.3s ease",
                   }}
                   onTouchStart={(e) => handleTouchStart(e, todo.id)}
                   onTouchMove={handleTouchMove}
@@ -258,7 +285,17 @@ export default function TodoApp() {
               <>
                 <ul className="space-y-2">
                   {completedTodos.map((todo) => (
-                    <li key={todo.id} className="relative overflow-hidden rounded-xl">
+                    <li
+                      key={todo.id}
+                      className="relative overflow-hidden rounded-xl"
+                      style={{
+                        maxHeight: dismissingId === todo.id ? 0 : 56,
+                        opacity: dismissingId === todo.id ? 0 : 1,
+                        marginBottom: dismissingId === todo.id ? 0 : undefined,
+                        transition: dismissingId === todo.id ? "max-height 0.3s ease 0.2s, opacity 0.2s ease, margin-bottom 0.3s ease 0.2s" : undefined,
+                        overflow: "hidden",
+                      }}
+                    >
                       {/* スワイプ時の背景（削除） */}
                       <div className="absolute inset-0 bg-[#e05555] flex items-center justify-end pr-5 rounded-xl">
                         <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -268,8 +305,16 @@ export default function TodoApp() {
                       <div
                         className="group flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#f0efec]"
                         style={{
-                          transform: swipingId === todo.id ? `translateX(${swipeOffset}px)` : "translateX(0)",
-                          transition: swipingId === todo.id ? "none" : "transform 0.3s ease",
+                          transform: dismissingId === todo.id
+                            ? "translateX(-110%)"
+                            : swipingId === todo.id
+                            ? `translateX(${swipeOffset}px)`
+                            : "translateX(0)",
+                          transition: dismissingId === todo.id
+                            ? "transform 0.3s cubic-bezier(0.4, 0, 0.6, 1)"
+                            : swipingId === todo.id
+                            ? "none"
+                            : "transform 0.3s ease",
                         }}
                         onTouchStart={(e) => handleTouchStart(e, todo.id)}
                         onTouchMove={handleTouchMove}
