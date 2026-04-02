@@ -11,8 +11,43 @@ export default function TodoApp() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [swipingId, setSwipingId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   const isComposingRef = useRef(false);
   const lastCompositionEnd = useRef(0);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const swipeDirectionLocked = useRef<"horizontal" | "vertical" | null>(null);
+  const SWIPE_THRESHOLD = 80;
+
+  const handleTouchStart = (e: React.TouchEvent, id: string) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    swipeDirectionLocked.current = null;
+    setSwipingId(id);
+    setSwipeOffset(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (!swipeDirectionLocked.current) {
+      swipeDirectionLocked.current = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+    }
+    if (swipeDirectionLocked.current === "horizontal" && dx < 0) {
+      setSwipeOffset(dx);
+    }
+  };
+
+  const handleTouchEnd = (todo: Todo) => {
+    if (swipeOffset < -SWIPE_THRESHOLD) {
+      if (!todo.completed) toggleTodo(todo);
+      else deleteTodo(todo.id);
+    }
+    setSwipeOffset(0);
+    setSwipingId(null);
+    swipeDirectionLocked.current = null;
+  };
 
   // 認証状態の監視
   useEffect(() => {
@@ -165,27 +200,39 @@ export default function TodoApp() {
         ) : (
           <ul className="space-y-2">
             {activeTodos.map((todo) => (
-              <li
-                key={todo.id}
-                className="group flex items-center gap-3 px-4 py-3.5 rounded-xl border bg-white border-[#e8e8e0] hover:border-[#d0d0c8] hover:shadow-sm transition-all"
-              >
-                <button
-                  onClick={() => toggleTodo(todo)}
-                  aria-label="完了にする"
-                  className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-[#d0d0c8] hover:border-[#1a1a2e] flex items-center justify-center transition-all"
-                />
-                <span className="flex-1 text-sm leading-relaxed text-[#1a1a2e]">
-                  {todo.text}
-                </span>
-                <button
-                  onClick={() => deleteTodo(todo.id)}
-                  aria-label="削除"
-                  className="flex-shrink-0 opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-[#c0c0b8] hover:text-[#e05555] hover:bg-[#ffe8e8] transition-all"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <li key={todo.id} className="relative overflow-hidden rounded-xl">
+                {/* スワイプ時の背景（完了） */}
+                <div className="absolute inset-0 bg-[#4caf7d] flex items-center justify-end pr-5 rounded-xl">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
                   </svg>
-                </button>
+                </div>
+                <div
+                  className="group flex items-center gap-3 px-4 py-3.5 rounded-xl border bg-white border-[#e8e8e0]"
+                  style={{
+                    transform: swipingId === todo.id ? `translateX(${swipeOffset}px)` : "translateX(0)",
+                    transition: swipingId === todo.id ? "none" : "transform 0.3s ease",
+                  }}
+                  onTouchStart={(e) => handleTouchStart(e, todo.id)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={() => handleTouchEnd(todo)}
+                >
+                  <button
+                    onClick={() => toggleTodo(todo)}
+                    aria-label="完了にする"
+                    className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-[#d0d0c8] hover:border-[#1a1a2e] flex items-center justify-center transition-all"
+                  />
+                  <span className="flex-1 text-sm leading-relaxed text-[#1a1a2e]">{todo.text}</span>
+                  <button
+                    onClick={() => deleteTodo(todo.id)}
+                    aria-label="削除"
+                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-[#c0c0b8] hover:text-[#e05555] hover:bg-[#ffe8e8] transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -211,31 +258,43 @@ export default function TodoApp() {
               <>
                 <ul className="space-y-2">
                   {completedTodos.map((todo) => (
-                    <li
-                      key={todo.id}
-                      className="group flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#f0efec] border border-transparent transition-all"
-                    >
-                      <button
-                        onClick={() => toggleTodo(todo)}
-                        aria-label="未完了に戻す"
-                        className="flex-shrink-0 w-5 h-5 rounded-full bg-[#1a1a2e] border-2 border-[#1a1a2e] flex items-center justify-center transition-all"
-                      >
-                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
-                        </svg>
-                      </button>
-                      <span className="flex-1 text-sm leading-relaxed line-through text-[#b0b0a8]">
-                        {todo.text}
-                      </span>
-                      <button
-                        onClick={() => deleteTodo(todo.id)}
-                        aria-label="削除"
-                        className="flex-shrink-0 opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-[#c0c0b8] hover:text-[#e05555] hover:bg-[#ffe8e8] transition-all"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <li key={todo.id} className="relative overflow-hidden rounded-xl">
+                      {/* スワイプ時の背景（削除） */}
+                      <div className="absolute inset-0 bg-[#e05555] flex items-center justify-end pr-5 rounded-xl">
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                      </button>
+                      </div>
+                      <div
+                        className="group flex items-center gap-3 px-4 py-3.5 rounded-xl bg-[#f0efec]"
+                        style={{
+                          transform: swipingId === todo.id ? `translateX(${swipeOffset}px)` : "translateX(0)",
+                          transition: swipingId === todo.id ? "none" : "transform 0.3s ease",
+                        }}
+                        onTouchStart={(e) => handleTouchStart(e, todo.id)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={() => handleTouchEnd(todo)}
+                      >
+                        <button
+                          onClick={() => toggleTodo(todo)}
+                          aria-label="未完了に戻す"
+                          className="flex-shrink-0 w-5 h-5 rounded-full bg-[#1a1a2e] border-2 border-[#1a1a2e] flex items-center justify-center transition-all"
+                        >
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                          </svg>
+                        </button>
+                        <span className="flex-1 text-sm leading-relaxed line-through text-[#b0b0a8]">{todo.text}</span>
+                        <button
+                          onClick={() => deleteTodo(todo.id)}
+                          aria-label="削除"
+                          className="flex-shrink-0 opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-[#c0c0b8] hover:text-[#e05555] hover:bg-[#ffe8e8] transition-all"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
