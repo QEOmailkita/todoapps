@@ -1,3 +1,19 @@
+// Fix broken localStorage injected by Node.js --localstorage-file with invalid path
+if (typeof localStorage !== "undefined" && typeof localStorage.getItem !== "function") {
+  Object.defineProperty(globalThis, "localStorage", {
+    value: {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+      clear: () => {},
+      key: () => null,
+      length: 0,
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
