@@ -12,6 +12,7 @@ export default function TodoApp() {
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const isComposingRef = useRef(false);
+  const lastCompositionEnd = useRef(0);
 
   // 認証状態の監視
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function TodoApp() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !isComposingRef.current) addTodo();
+    if (e.key === "Enter" && !isComposingRef.current && Date.now() - lastCompositionEnd.current > 50) addTodo();
   };
 
   if (loading) {
@@ -137,7 +138,7 @@ export default function TodoApp() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onCompositionStart={() => { isComposingRef.current = true; }}
-            onCompositionEnd={() => { setTimeout(() => { isComposingRef.current = false; }, 0); }}
+            onCompositionEnd={() => { isComposingRef.current = false; lastCompositionEnd.current = Date.now(); }}
             onKeyDown={handleKeyDown}
             placeholder="新しいタスクを入力..."
             className="flex-1 px-4 py-3 rounded-xl border border-[#e8e8e0] bg-white text-[#1a1a2e] placeholder-[#c0c0b8] text-sm focus:outline-none focus:ring-2 focus:ring-[#1a1a2e]/20 focus:border-[#1a1a2e] transition-all"
